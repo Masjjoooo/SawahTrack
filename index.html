@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#173b2b">
+  <title>SawahTrack</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="authView" class="auth-wrap">
+    <section class="auth-card">
+      <div class="brand-mark">ST</div>
+      <p class="eyebrow">MANAJEMEN PERTANIAN</p>
+      <h1>SawahTrack</h1>
+      <p class="muted">Kelola pemilik, petakan, pekerjaan bajak dan combine.</p>
+      <form id="loginForm">
+        <label>Email<input id="email" type="email" autocomplete="username" required placeholder="nama@email.com"></label>
+        <label>Password<input id="password" type="password" autocomplete="current-password" required placeholder="Minimal 8 karakter"></label>
+        <button class="primary full" type="submit">Masuk</button>
+      </form>
+      <button id="showSignup" class="link-button">Buat akun baru</button>
+      <p id="authMessage" class="message" aria-live="polite"></p>
+      <p class="tiny muted">Akun pertama dibuat melalui Supabase Auth. Admin dapat mengundang operator setelah login.</p>
+    </section>
+  </div>
+
+  <div id="appView" class="app-shell hidden">
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-mark small">ST</div><div><b>SawahTrack</b><small>Field & Work Manager</small></div></div>
+      <nav>
+        <button class="nav-item active" data-page="dashboard">▦ <span>Dashboard</span></button>
+        <button class="nav-item" data-page="owners">♙ <span>Pemilik Sawah</span></button>
+        <button class="nav-item" data-page="fields">⌖ <span>Petakan & Peta</span></button>
+        <button class="nav-item" data-page="jobs">⚒ <span>Pekerjaan</span></button>
+        <button class="nav-item" data-page="finance">Rp <span>Keuangan</span></button>
+        <button class="nav-item" data-page="team">♧ <span>Tim & Akses</span></button>
+      </nav>
+      <div class="sidebar-bottom"><span id="userEmail" class="tiny"></span><button id="logoutBtn" class="nav-item">↪ <span>Keluar</span></button></div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar"><div><p class="eyebrow">WORKSPACE PERTANIAN</p><h2 id="pageTitle">Dashboard</h2></div><div class="top-actions"><span id="rolePill" class="pill">MEMBER</span><button id="refreshBtn" class="icon-button" title="Muat ulang">↻</button></div></header>
+
+      <section id="dashboardPage" class="page">
+        <div class="welcome"><div><p class="eyebrow light">RINGKASAN OPERASIONAL</p><h1>Catat lahan. Atur pekerjaan. Pantau hasil.</h1><p>Semua data pelanggan dan petakan dalam satu tempat.</p></div><div class="welcome-icon">🌾</div></div>
+        <div class="stats-grid">
+          <article class="stat-card"><span>Pemilik sawah</span><strong id="statOwners">0</strong><small>Terdaftar</small></article>
+          <article class="stat-card"><span>Petakan sawah</span><strong id="statFields">0</strong><small>Data petakan</small></article>
+          <article class="stat-card"><span>Total kotak</span><strong id="statBoxes">0</strong><small>Akumulasi petakan</small></article>
+          <article class="stat-card"><span>Pekerjaan selesai</span><strong id="statJobs">0</strong><small>Bajak + combine</small></article>
+        </div>
+        <div class="panel"><div class="panel-heading"><div><h3>Akses cepat</h3><p class="muted">Mulai pencatatan dari menu berikut.</p></div></div><div class="quick-grid"><button class="quick-card" data-go="owners"><b>＋</b><span>Tambah pemilik</span></button><button class="quick-card" data-go="fields"><b>⌖</b><span>Tambah petakan</span></button><button class="quick-card" data-go="jobs"><b>⚒</b><span>Catat pekerjaan</span></button></div></div>
+        <p class="notice">Catatan: peta satelit memerlukan koneksi internet. Data formulir dan peta disimpan ke database setelah tersambung.</p>
+      </section>
+
+      <section id="ownersPage" class="page hidden">
+        <div class="toolbar"><div><h3>Daftar pemilik</h3><p class="muted">Satu pemilik dapat mempunyai banyak petakan.</p></div><button id="addOwnerBtn" class="primary">＋ Pemilik</button></div>
+        <div class="panel"><input id="ownerSearch" class="search" placeholder="Cari nama atau nomor HP..."><div class="table-wrap"><table><thead><tr><th>Nama</th><th>Telepon</th><th>Alamat</th><th></th></tr></thead><tbody id="ownersTable"></tbody></table></div></div>
+        <form id="ownerForm" class="panel form-grid hidden">
+          <input id="ownerId" type="hidden"><h3 class="span-2">Form pemilik sawah</h3>
+          <label>Nama pemilik *<input id="ownerName" required></label><label>Nomor HP<input id="ownerPhone" inputmode="tel"></label>
+          <label>Desa<input id="ownerVillage"></label><label>Alamat / patokan<input id="ownerAddress"></label>
+          <label class="span-2">Catatan<textarea id="ownerNotes" rows="2"></textarea></label>
+          <div class="form-actions span-2"><button type="button" class="secondary" data-cancel="ownerForm">Batal</button><button class="primary">Simpan pemilik</button></div>
+        </form>
+      </section>
+
+      <section id="fieldsPage" class="page hidden">
+        <div class="toolbar"><div><h3>Petakan dan peta satelit</h3><p class="muted">Gambar polygon batas sawah, lalu simpan sebagai petakan pemilik.</p></div><button id="addFieldBtn" class="primary">＋ Petakan</button></div>
+        <div class="map-layout">
+          <div class="panel map-panel"><div id="map"></div><div class="map-hint">Pilih alat polygon di sisi kiri peta, klik titik-titik sudut sawah, lalu klik titik awal untuk menutup batas.</div></div>
+          <div class="panel field-side">
+            <h3>Data petakan</h3>
+            <form id="fieldForm">
+              <input id="fieldId" type="hidden">
+              <label>Pemilik sawah *<select id="fieldOwner" required><option value="">Pilih pemilik</option></select></label>
+              <label>Nama / patokan petakan *<input id="fieldName" required placeholder="Contoh: Sawah dekat jembatan"></label>
+              <div class="two-col"><label>Jumlah kotak<input id="fieldBoxes" type="number" min="0" step="0.01" value="1"></label><label>Luas (m²)<input id="fieldArea" type="number" min="0" step="0.01" placeholder="Otomatis dari peta"></label></div>
+              <label>Tarif bajak per kotak (Rp)<input id="fieldPlowRate" type="number" min="0" step="1" placeholder="Tarif khusus pelanggan"></label>
+              <label>Tarif combine per kotak (Rp)<input id="fieldCombineRate" type="number" min="0" step="1" placeholder="Tarif khusus pelanggan"></label>
+              <label>Patokan / catatan<textarea id="fieldNotes" rows="2"></textarea></label>
+              <button class="primary full" type="submit">Simpan petakan</button>
+              <button id="clearPolygonBtn" type="button" class="secondary full">Hapus gambar batas</button>
+            </form>
+            <p id="fieldMessage" class="message"></p>
+          </div>
+        </div>
+        <div class="panel"><h3>Petakan tersimpan</h3><div class="table-wrap"><table><thead><tr><th>Petakan</th><th>Pemilik</th><th>Kotak</th><th>Luas</th><th></th></tr></thead><tbody id="fieldsTable"></tbody></table></div></div>
+      </section>
+
+      <section id="jobsPage" class="page hidden">
+        <div class="toolbar"><div><h3>Pekerjaan bajak & combine</h3><p class="muted">Catat pekerjaan berdasarkan pemilik, petakan, musim dan tarif pelanggan.</p></div></div>
+        <form id="jobForm" class="panel form-grid">
+          <h3 class="span-2">Pekerjaan baru</h3>
+          <label>Jenis pekerjaan<select id="jobType"><option value="bajak">Bajak</option><option value="combine">Combine</option></select></label>
+          <label>Tanggal<input id="jobDate" type="date" required></label>
+          <label>Musim / periode<input id="jobSeason" placeholder="Contoh: MT 1 2026/2027"></label>
+          <label>Mesin / unit<input id="jobMachine" placeholder="Contoh: Traktor TR4"></label>
+          <label class="span-2">Pilih petakan (bisa lebih dari satu)<select id="jobFields" multiple size="5"></select><small class="muted">Tarif akan mengikuti tarif khusus petakan. Jika kosong, isi tarif manual di bawah.</small></label>
+          <label>Tarif per kotak (Rp)<input id="jobRate" type="number" min="0" step="1" value="0"></label>
+          <label>Status<select id="jobStatus"><option value="selesai">Selesai</option><option value="proses">Proses</option><option value="pending">Menunggu</option></select></label>
+          <label>Catatan<textarea id="jobNotes" rows="2"></textarea></label>
+          <div class="form-actions span-2"><button class="primary">Simpan pekerjaan</button></div>
+        </form>
+        <div class="panel"><h3>Riwayat pekerjaan</h3><div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Jenis</th><th>Petakan</th><th>Kotak</th><th>Nilai jasa</th><th>Status</th></tr></thead><tbody id="jobsTable"></tbody></table></div></div>
+      </section>
+
+      <section id="financePage" class="page hidden">
+        <div class="toolbar"><div><h3>Keuangan dan solar</h3><p class="muted">Catat pemasukan, pembayaran pelanggan dan pengeluaran mesin.</p></div></div>
+        <div class="stats-grid"><article class="stat-card"><span>Nilai jasa</span><strong id="financeGross">Rp0</strong></article><article class="stat-card"><span>Pembayaran masuk</span><strong id="financePaid">Rp0</strong></article><article class="stat-card"><span>Pengeluaran</span><strong id="financeExpense">Rp0</strong></article><article class="stat-card"><span>Saldo operasional</span><strong id="financeNet">Rp0</strong></article></div>
+        <div class="two-panels">
+          <form id="paymentForm" class="panel form-grid"><h3 class="span-2">Catat pembayaran</h3><label class="span-2">Pekerjaan<select id="paymentJob" required></select></label><label>Jumlah (Rp)<input id="paymentAmount" type="number" min="1" required></label><label>Tanggal<input id="paymentDate" type="date" required></label><button class="primary span-2">Simpan pembayaran</button></form>
+          <form id="expenseForm" class="panel form-grid"><h3 class="span-2">Catat pengeluaran</h3><label>Kategori<select id="expenseType"><option>Solar</option><option>Oli</option><option>Perbaikan</option><option>Suku cadang</option><option>Transportasi</option><option>Lainnya</option></select></label><label>Jumlah (Rp)<input id="expenseAmount" type="number" min="1" required></label><label>Tanggal<input id="expenseDate" type="date" required></label><label>Liter solar (opsional)<input id="fuelLiters" type="number" min="0" step="0.01"></label><label class="span-2">Keterangan<input id="expenseDescription"></label><button class="primary span-2">Simpan pengeluaran</button></form>
+        </div>
+        <div class="panel"><h3>Transaksi terakhir</h3><div id="financeList" class="list-stack"></div></div>
+      </section>
+
+      <section id="teamPage" class="page hidden">
+        <div class="panel"><h3>Tim dan akses pengguna</h3><p class="muted">Setiap orang menggunakan akun sendiri. Pembuatan akun operator dilakukan oleh admin melalui Supabase Auth, lalu admin menetapkan role.</p><div class="role-list"><div><b>Admin</b><span>Mengelola semua data, tim, pengaturan dan laporan.</span></div><div><b>Operator</b><span>Mencatat pemilik, petakan, pekerjaan dan pengeluaran.</span></div><div><b>Viewer</b><span>Hanya melihat data dan laporan.</span></div></div><p class="notice">Untuk keamanan, undangan akun dan perubahan role dikelola melalui dashboard Supabase; jangan pernah menaruh service-role key di aplikasi browser.</p></div>
+      </section>
+      <footer>© SawahTrack · Data operasional pertanian</footer>
+    </main>
+  </div>
+
+  <dialog id="signupDialog"><form id="signupForm" method="dialog" class="dialog-card"><h3>Buat akun SawahTrack</h3><label>Nama<input id="signupName" required></label><label>Email<input id="signupEmail" type="email" required></label><label>Password<input id="signupPassword" type="password" minlength="8" required></label><div class="form-actions"><button type="button" id="closeSignup" class="secondary">Batal</button><button class="primary">Daftar</button></div><p id="signupMessage" class="message"></p></form></dialog>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
